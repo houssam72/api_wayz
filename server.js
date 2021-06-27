@@ -169,12 +169,14 @@ db.insert({
 
 })
 
-app.get('/covSimple',(req,res)=>{
+app.post('/covSimple',(req,res)=>{
+  const {id}=req.body;
 	db.raw(`select c.id id,u.name as name,u.lastname as lastname ,u.number number,
 		           depart,arrive,heuredepart,heurearrivee,to_char(date,'DD/MM/YYYY') date,nbr_place_dispo,
                    bagage,type_vehicule,confort_voiture,prix,userid
 	         from covsimple c,users u
-			 where u.id=c.userid`)
+			 where u.id=c.userid
+       and u.id!=${id}`)
 	.then(users=>{
 		res.send(users.rows);
 	})
@@ -194,6 +196,62 @@ app.post('/mesCov',(req,res)=>{
 	})
 	.catch(err=>res.status(404).json('unable to response a simple cov'))
 })
+
+app.post('/saveCovSimple',(req,res)=>{
+    const {userId,covSId}=req.body;
+    
+  db.raw(`select *
+        from savecovs
+       where userid=${userId}
+       and   covsid=${covSId}`)
+  .then(users=>{
+    
+    if(!users.rows[0]){
+        db.insert({
+    userid:userId ,
+    covsid:covSId,
+    joined:new Date()
+     })
+.into('savecovs')
+.returning('*')
+.then(user=>res.json(user[0]))
+.catch(err=>res.status(400).json('unable to create a simple cov'))
+
+    }
+    else{
+      res.status(400).json('covoiturage deja exicttant');
+    }
+  })
+
+    
+
+
+})
+
+app.post('/afficherSaveCovSimple',(req,res)=>{
+    const {userId}=req.body;
+    
+  db.raw(`select c.id id,u.name as name,u.lastname as lastname ,u.number number,
+               depart,arrive,heuredepart,heurearrivee,to_char(date,'DD/MM/YYYY') date,nbr_place_dispo,
+                   bagage,type_vehicule,confort_voiture,prix,c.userid
+           from covsimple c,users u,savecovs s
+       where u.id=c.userid
+           and s.userid=${userId}
+         and s.covsid=c.id`)
+  .then(users=>{
+    
+    res.send(users.rows);
+    
+  })
+  .catch(err=>res.status(400).json('unable to see covoiturage simple'))
+
+
+    
+
+
+})
+
+
 
 app.get('/profile/:id',(req,res)=>{
   const {id}=req.params;
@@ -245,3 +303,11 @@ confort_voiture varchar(100) not null,
 
 
 */
+
+/*
+create table savecovs(
+  userId  int not null,
+  covsid int not null,
+  joined timestamp not null 
+  
+)*/
